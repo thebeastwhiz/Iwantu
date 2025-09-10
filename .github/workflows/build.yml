@@ -25,8 +25,8 @@ jobs:
           curl -L "https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz" -o pawnc.tar.gz
           mkdir -p $HOME/pawnc
           tar -xzf pawnc.tar.gz -C $HOME/pawnc
-          echo "$HOME/pawnc" >> $GITHUB_PATH
-          ls -l $HOME/pawnc
+          echo "$HOME/pawnc/pawnc-3.10.10-linux" >> $GITHUB_PATH
+          ls -l $HOME/pawnc/pawnc-3.10.10-linux
 
       - name: Get SA:MP includes
         run: |
@@ -39,9 +39,7 @@ jobs:
       - name: Compile gamemode
         run: |
           set -e
-          # If your file is not at the repo root, change the path below:
-          # e.g. pawnc gamemodes/NoPixelMode.pwn ...
-          $HOME/pawnc/pawnc NoPixelMode.pwn -i includes -o NoPixelMode.amx -O1 -d0 -e build_errors.txt || true
+          pawncc NoPixelMode.pwn -i includes -o NoPixelMode.amx -O1 -d0 -Z -e build_errors.txt || true
           if [ ! -f NoPixelMode.amx ]; then
             echo "Build failed. Showing errors:"
             [ -s build_errors.txt ] && sed -n '1,2000p' build_errors.txt
