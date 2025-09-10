@@ -1,11 +1,9 @@
 name: build-amx
-
 on:
   workflow_dispatch:
   push:
     paths:
       - "NoPixelMode.pwn"
-      - ".github/workflows/build.yml"
 
 jobs:
   build:
@@ -17,44 +15,26 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl git tar
+          sudo apt-get install -y curl git
 
       - name: Download Pawn compiler (v3.10.10)
         run: |
-          set -e
-          curl -L "https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz" -o pawnc.tar.gz
-          mkdir -p "$HOME/pawnc"
-          tar -xzf pawnc.tar.gz -C "$HOME/pawnc"
-          chmod +x "$HOME/pawnc/bin/pawncc"
-          # expose to later steps
-          echo "$HOME/pawnc/bin" >> $GITHUB_PATH
-          ls -l "$HOME/pawnc/bin"
+          mkdir -p pawnc
+          curl -L https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz -o pawnc.tar.gz
+          tar -xzf pawnc.tar.gz -C pawnc --strip-components=1
+          chmod +x pawnc/pawncc
+          echo "$(pwd)/pawnc" >> $GITHUB_PATH
 
       - name: Get SA:MP includes
         run: |
-          set -e
           git clone https://github.com/pawn-lang/samp-stdlib.git
           mkdir -p includes
           cp samp-stdlib/*.inc includes/
-          ls -l includes
 
       - name: Compile gamemode
         run: |
-          set -e
-          # use full path just in case PATH didn’t refresh
-          "$HOME/pawnc/bin/pawncc" NoPixelMode.pwn \
-            -i includes \
-            -o NoPixelMode.amx \
-            -O1 -d0 -Z \
-            -e build_errors.txt || true
-
-          if [ ! -f NoPixelMode.amx ]; then
-            echo "Build failed. Showing errors:"
-            [ -s build_errors.txt ] && sed -n '1,2000p' build_errors.txt
-            exit 1
-          fi
-
-          ls -l NoPixelMode.amx
+          pawnc/pawncc NoPixelMode.pwn -i includes -o NoPixelMode.amx -O1 -d0 -Z \
+          || (echo "Compiler output:" && cat NoPixelMode.lst && exit 1)
 
       - name: Upload AMX artifact
         uses: actions/upload-artifact@v4
