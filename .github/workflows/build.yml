@@ -16,14 +16,15 @@ jobs:
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y git cmake ninja-build clang curl
+          sudo apt-get install -y git cmake ninja-build clang curl build-essential
 
       - name: Get pawn compiler
         run: |
           git clone --depth 1 https://github.com/pawn-lang/compiler.git compiler
-          cmake -S compiler/source/compiler -B compiler/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S compiler/source/compiler -B compiler/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-D_POSIX_C_SOURCE=200809L"
           cmake --build compiler/build -j2
-          # show where pawncc ended up (path varies)
           find compiler/build -type f -name pawncc -perm -111 -print
 
       - name: Get SA:MP includes
