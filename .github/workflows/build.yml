@@ -5,11 +5,11 @@ on:
   push:
     paths:
       - "NoPixelMode.pwn"
+      - ".github/workflows/build.yml"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,53 +17,35 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl jq
+          sudo apt-get install -y curl git tar
 
-      # === Download prebuilt pawncc (Linux x64) from pawn-lang/compiler releases ===
-      - name: Get prebuilt pawncc
-        id: pawncc
+      - name: Download Pawn compiler (v3.10.10)
         run: |
-          # Find the latest Linux x64 pawncc asset
-          API="https://api.github.com/repos/pawn-lang/compiler/releases/latest"
-          URL=$(curl -s "$API" \
-            | jq -r '.assets[] | select((.name|test("linux"; "i")) and (.name|test("pawncc"; "i"))) | .browser_download_url' \
-            | head -n1)
-
-          if [ -z "$URL" ]; then
-            echo "No Linux pawncc asset found in latest release"; exit 1
-          fi
-
-          echo "Downloading: $URL"
-          mkdir -p tools && cd tools
-          curl -L -o pawncc.tar.gz "$URL"
-          # Try both tar and zip (depending on how the release is packed)
-          if file pawncc.tar.gz | grep -qi zip; then
-            sudo apt-get install -y unzip
-            unzip -o pawncc.tar.gz
-          else
-            tar -xzf pawncc.tar.gz || tar -xJf pawncc.tar.gz || true
-          fi
-
-          # Find the binary and put it on PATH
-          BIN=$(find . -type f -name pawncc -perm -111 | head -n1)
-          if [ -z "$BIN" ]; then
-            echo "pawncc binary not found in the release archive"; exit 1
-          fi
-          echo "Using pawncc at: $BIN"
-          echo "PAWNCC=$GITHUB_WORKSPACE/tools/$BIN" >> $GITHUB_ENV
-          chmod +x "$BIN"
+          set -e
+          curl -L "https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz" -o pawnc.tar.gz
+          mkdir -p $HOME/pawnc
+          tar -xzf pawnc.tar.gz -C $HOME/pawnc
+          echo "$HOME/pawnc" >> $GITHUB_PATH
+          ls -l $HOME/pawnc
 
       - name: Get SA:MP includes
         run: |
-          git clone --depth 1 https://github.com/pawn-lang/samp-stdlib.git
+          set -e
+          git clone https://github.com/pawn-lang/samp-stdlib.git
           mkdir -p includes
           cp samp-stdlib/*.inc includes/
+          ls -l includes
 
       - name: Compile gamemode
         run: |
-          "$PAWNCC" NoPixelMode.pwn -i includes -o NoPixelMode.amx -O1 -d0 -e build_errors.txt || true
-          if [ -s build_errors.txt ]; then
-            echo "Compiler output:"; cat build_errors.txt; exit 1
+          set -e
+          # If your file is not at the repo root, change the path below:
+          # e.g. pawnc gamemodes/NoPixelMode.pwn ...
+          $HOME/pawnc/pawnc NoPixelMode.pwn -i includes -o NoPixelMode.amx -O1 -d0 -e build_errors.txt || true
+          if [ ! -f NoPixelMode.amx ]; then
+            echo "Build failed. Showing errors:"
+            [ -s build_errors.txt ] && sed -n '1,2000p' build_errors.txt
+            exit 1
           fi
           ls -l NoPixelMode.amx
 
