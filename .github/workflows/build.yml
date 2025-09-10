@@ -20,10 +20,10 @@ jobs:
       - name: Get pawn compiler
         run: |
           git clone https://github.com/pawn-lang/compiler.git
-          cd compiler
-          cmake -S source -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build
-          echo "$(pwd)/build" >> $GITHUB_PATH
+cd compiler
+cmake -S source -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+echo "$(pwd)/build" >> $GITHUB_PATH
 
       - name: Get SA:MP includes
         run: |
